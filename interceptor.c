@@ -592,41 +592,18 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 	sys_call_table[syscall] = interceptor;
 	set_addr_ro((unsigned long) sys_call_table);
 	spin_unlock(&sys_call_table_lock);
-
             break;
 
             
 
         case REQUEST_SYSCALL_RELEASE:
-
-            
-
             spin_lock(&sys_call_table_lock);
-
-            
-
-            set_addr_rw((unsigned long) sys_call_table);
-
-            
-
-            table[syscall].intercepted = 0;
-
-            sys_call_table[syscall] = table[syscall].f;
-
-            
-
-            spin_unlock(&my_table_lock);
-
-            
-
-            set_addr_ro((unsigned long) sys_call_table);
-
-            
-
-            spin_unlock(&sys_call_table_lock);
-
-            
-
+	table[syscall].intercepted = 0;
+	spin_unlock(&my_table_lock);
+	set_addr_rw((unsigned long) sys_call_table);
+	sys_call_table[syscall] = table[syscall].f;
+	set_addr_ro((unsigned long) sys_call_table);
+	spin_unlock(&sys_call_table_lock);
             break;
 
             
