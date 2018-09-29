@@ -581,61 +581,18 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			}
 		}
 	}
-    // //Check whether REQUEST_START_MONITORING is being called unnecessarily, when all pids are being monitored.
-
-    // if (cmd == REQUEST_START_MONITORING) {
-    //     if ((pid == 0) && (table[syscall].monitored == 2) && (table[syscall].listcount == 0)) {
-    //         spin_unlock(&my_table_lock);
-    //         return -EBUSY;
-    //     }
-    //     if ((check_pid_monitored(syscall, pid) == 1) && (table[syscall].monitored == 2)) {
-    //         spin_unlock(&my_table_lock);
-    //         return -EINVAL;
-    //     }
-    //     if ((((check_pid_monitored(syscall, pid) == 1) && (table[syscall].monitored != 2)) ||
-    //          ((check_pid_monitored(syscall, pid) == 0) && (table[syscall].monitored == 2)))) {
-    //         spin_unlock(&my_table_lock);
-    //         return -EBUSY;
-    //     }
-    // }
-    //******************************************************************************
-
-    //******************************************************************************
-
-    
 
     switch (cmd) {
-
-            
-
         case REQUEST_SYSCALL_INTERCEPT:
-
-            spin_lock(&sys_call_table_lock);
-
-            
-
-            table[syscall].f = sys_call_table[syscall];
-
-            table[syscall].intercepted = 1;
-
-            
-
-            spin_unlock(&my_table_lock);
-
-            
-
-            set_addr_rw((unsigned long) sys_call_table);
-
-            sys_call_table[syscall] = interceptor;
-
-            set_addr_ro((unsigned long) sys_call_table);
-
-            
-
-            spin_unlock(&sys_call_table_lock);
-
-            
-
+            spin_lock(&my_table_lock);
+			spin_lock(&sys_call_table_lock);
+			table[syscall].f = sys_call_table[syscall];
+			table[syscall].intercepted = 1;
+			set_addr_rw((unsigned long) sys_call_table);
+			sys_call_table[syscall] = interceptor;
+			set_addr_ro((unsigned long) sys_call_table);
+			spin_unlock(&my_table_lock);
+			spin_unlock(&sys_call_table_lock);
             break;
 
             
