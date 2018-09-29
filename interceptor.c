@@ -552,7 +552,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 	}
 	// can not stop monitoroing if not monitored
 	if (cmd == REQUEST_STOP_MONITORING){
-		if (check_pid_monitored(syscall, pid) == 0){
+		if ((check_pid_monitored(syscall, pid) == 0) && (table[syscall].monitored != 2)){
 			spin_unlock(&my_table_lock);
 			return -EINVAL;
 		}
@@ -561,7 +561,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 	// Error checking D. Check for -EBUSY conditions
 	// can not intercept a sys call that is already intercepted
 	if (cmd == REQUEST_SYSCALL_INTERCEPT){
-		if (table[syscall].intercepted == 1){
+		if (table[syscall].intercepted != 0){
 			spin_unlock(&my_table_lock);
 			return -EBUSY;
 		}
