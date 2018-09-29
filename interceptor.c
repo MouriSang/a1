@@ -493,72 +493,16 @@ void my_exit_group(int status){
 
 //----------------------------------------------------------------
 
-
-
-
-
-
-
-/** 
-
- * This is the generic interceptor function.
-
- * It should just log a message and call the original syscall.
-
- * 
-
- * TODO: Implement this function. 
-
- * - Check first to see if the syscall is being monitored for the current->pid. 
-
- * - Recall the convention for the "monitored" flag in the mytable struct: 
-
- *     monitored=0 => not monitored
-
- *     monitored=1 => some pids are monitored, check the corresponding my_list
-
- *     monitored=2 => all pids are monitored for this syscall
-
- * - Use the log_message macro, to log the system call parameters!
-
- *     Remember that the parameters are passed in the pt_regs registers.
-
- *     The syscall parameters are found (in order) in the 
-
- *     ax, bx, cx, dx, si, di, and bp registers (see the pt_regs struct).
-
- * - Don't forget to call the original system call, so we allow processes to proceed as normal.
-
- *
-
- */
-
 asmlinkage long interceptor(struct pt_regs reg) {
-
-    
-
-    //Using synchronization, as we're now accessing data structures.
-
-    spin_lock(&my_table_lock);
-
-    
-
-    if ((table[reg.ax].monitored == 2) || (check_pid_monitored(reg.ax, current->pid) == 1)) {
-
-        log_message(current->pid, reg.ax, reg.bx, reg.cx, reg.dx, reg.si, reg.di, reg.bp);
-
-    }
-
-    
-
-    spin_unlock(&my_table_lock);
-
-    
-
-	return table[reg.ax].f(reg); // The original system call is called here.
-
-    
-
+	spin_lock(&my_table_lock); // lock before access the table
+	if (table[reg.ax].monitored == 2){ // all pids are monitored
+		log_message(current->pid, reg.ax, reg.bx, reg.cx, reg.dx, reg.si, reg.di, reg.bp);
+	}
+	else if (check_pid_monitored(reg.ax, current->pid)){ // some pids are monitored, check if the pid is monitored
+		log_message(current->pid, reg.ax, reg.bx, reg.cx, reg.dx, reg.si, reg.di, reg.bp);
+	}
+	spin_unlock(&my_table_lock); // unlock after access the table
+	return table[reg.ax].f(reg); // the original sys call
 }
 
 
