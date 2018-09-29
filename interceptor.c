@@ -540,7 +540,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 		if ((pid == 0) || (check_pids_same_owner(current->pid, pid) != 0)){
 			return -EPERM;
 		}
-		if ((current_uid() != 0) && (check_pids_same_owner(current->pid, pid) != 0)) {
+		if ((current_uid() != 0) || (check_pids_same_owner(current->pid, pid) != 0)) {
 			return -EPERM;
 		}
 	}
