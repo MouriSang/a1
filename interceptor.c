@@ -507,162 +507,26 @@ asmlinkage long interceptor(struct pt_regs reg) {
 
 
 
-/**
-
- * My system call - this function is called whenever a user issues a MY_CUSTOM_SYSCALL system call.
-
- * When that happens, the parameters for this system call indicate one of 4 actions/commands:
-
- *      - REQUEST_SYSCALL_INTERCEPT to intercept the 'syscall' argument
-
- *      - REQUEST_SYSCALL_RELEASE to de-intercept the 'syscall' argument
-
- *      - REQUEST_START_MONITORING to start monitoring for 'pid' whenever it issues 'syscall' 
-
- *      - REQUEST_STOP_MONITORING to stop monitoring for 'pid'
-
- *      For the last two, if pid=0, that translates to "all pids".
-
- * 
-
- * TODO: Implement this function, to handle all 4 commands correctly.
-
- *
-
- * - For each of the commands, check that the arguments are valid (-EINVAL):
-
- *   a) the syscall must be valid (not negative, not > NR_syscalls, and not MY_CUSTOM_SYSCALL itself)
-
- *   b) the pid must be valid for the last two commands. It cannot be a negative integer, 
-
- *      and it must be an existing pid (except for the case when it's 0, indicating that we want 
-
- *      to start/stop monitoring for "all pids"). 
-
- *      If a pid belongs to a valid process, then the following expression is non-NULL:
-
- *           pid_task(find_vpid(pid), PIDTYPE_PID)
-
- * - Check that the caller has the right permissions (-EPERM)
-
- *      For the first two commands, we must be root (see the current_uid() macro).
-
- *      For the last two commands, the following logic applies:
-
- *        - is the calling process root? if so, all is good, no doubts about permissions.
-
- *        - if not, then check if the 'pid' requested is owned by the calling process 
-
- *        - also, if 'pid' is 0 and the calling process is not root, then access is denied 
-
- *          (monitoring all pids is allowed only for root, obviously).
-
- *      To determine if two pids have the same owner, use the helper function provided above in this file.
-
- * - Check for correct context of commands (-EINVAL):
-
- *     a) Cannot de-intercept a system call that has not been intercepted yet.
-
- *     b) Cannot stop monitoring for a pid that is not being monitored, or if the 
-
- *        system call has not been intercepted yet.
-
- * - Check for -EBUSY conditions:
-
- *     a) If intercepting a system call that is already intercepted.
-
- *     b) If monitoring a pid that is already being monitored.
-
- * - If a pid cannot be added to a monitored list, due to no memory being available,
-
- *   an -ENOMEM error code should be returned.
-
- *   
-
- *   NOTE: The order of the checks may affect the tester, in case of several error conditions
-
- *   in the same system call, so please be careful!
-
- *
-
- * - Make sure to keep track of all the metadata on what is being intercepted and monitored.
-
- *   Use the helper functions provided above for dealing with list operations.
-
- *
-
- * - Whenever altering the sys_call_table, make sure to use the set_addr_rw/set_addr_ro functions
-
- *   to make the system call table writable, then set it back to read-only. 
-
- *   For example: set_addr_rw((unsigned long)sys_call_table);
-
- *   Also, make sure to save the original system call (you'll need it for 'interceptor' to work correctly).
-
- * 
-
- * - Make sure to use synchronization to ensure consistency of shared data structures.
-
- *   Use the calltable_spinlock and pidlist_spinlock to ensure mutual exclusion for accesses 
-
- *   to the system call table and the lists of monitored pids. Be careful to unlock any spinlocks 
-
- *   you might be holding, before you exit the function (including error cases!).  
-
- */
-
 asmlinkage long my_syscall(int cmd, int syscall, int pid) {
-
-    
-
-    //*************************************************************************
-
-    //Error Conditions: Part A from the handout on course website.
-
-    //For each of the commands, check the arguments are valid.
-
-    
-
-    //Immediately test whether the cmd is valid or not.
-
-    if ((cmd != REQUEST_SYSCALL_INTERCEPT) && (cmd != REQUEST_SYSCALL_RELEASE) &&
-
-        (cmd != REQUEST_START_MONITORING) && (cmd != REQUEST_STOP_MONITORING)) {
-
-        return -EINVAL;
-
-    }
-
-    
-
-    //Immediately test whether the syscall is valid or not.
-
-    if ((syscall < 0) || (syscall > NR_syscalls) || (syscall == MY_CUSTOM_SYSCALL)) {
-
-        return -EINVAL;
-
-    }
-
-    
-
-    //Immediately test whether the pid is valid for the REQUEST_START_MONITORING & REQUEST_STOP_MONITORING commands.
-
-    if ((cmd == REQUEST_START_MONITORING) || (cmd == REQUEST_STOP_MONITORING)) {
-
-        if (pid != 0) {
-
-            if ((pid < 0) || (pid_task(find_vpid(pid), PIDTYPE_PID) == NULL)) {
-
-                return -EINVAL;
-
-            }
-
+	// Error checking A. Check if the commands are valid (-EINVAL)
+	// check if the cmd is valid
+	if ((cmd != REQUEST_START_MONITORING) && (cmd != REQUEST_STOP_MONITORING) &&
+		(cmd != REQUEST_SYSCALL_INTERCEPT) && (cmd != REQUEST_SYSCALL_RELEASE)) {
+		return -EINVAL;
+	}
+	// check if syscall number is valid
+	if ((syscall < 0) || (syscall > NR_syscalls) || (syscall == MY_CUSTOM_SYSCALL)){
+		return -EINVAL;
+	}
+	// check if pid number is valid for monitoring cmd
+	if ((cmd == REQUEST_START_MONITORING) || (cmd == REQUEST_STOP_MONITORING)) {
+		if (pid < 0){
+			return -EINVAL;
+		}
+        if ((pid != 0) && (pid_task(find_vpid(pid), PIDTYPE_PID) == NULL)) {
+            return -EINVAL;
         }
-
     }
-
-    
-
     //*************************************************************************
 
     //Error Conditions: Part B from the handout on course website.
