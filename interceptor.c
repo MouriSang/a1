@@ -486,40 +486,9 @@ void (*orig_exit_group)(int);
 
 
 
-/**
-
- * Our custom exit_group system call.
-
- *
-
- * TODO: When a process exits, make sure to remove that pid from all lists.
-
- * The exiting process's PID can be retrieved using the current variable (current->pid).
-
- * Don't forget to call the original exit_group.
-
- *
-
- * Note: using printk in this function will potentially result in errors!
-
- *
-
- */
-
-void my_exit_group(int status)
-
-{
-
-    
-
-    del_pid(current->pid);
-
-    
-
-    (*orig_exit_group)(status); //Not forgetting the original exit_group call.
-
-    
-
+void my_exit_group(int status){
+	del_pid(current->pid); // delete the pid from all list
+	(*orig_exit_group)(status); // calling the orighinal exit_group call
 }
 
 //----------------------------------------------------------------
@@ -1137,70 +1106,6 @@ static int init_function(void) {
 }
 
 
-
-// static void exit_function(void)
-// {
-//     int y = 0; //Variable decleration at the beginning prevents compiler warning.
-
-    
-
-//     //My Table
-
-    
-
-//     spin_lock(&my_table_lock);
-
-    
-
-//     while (y < NR_syscalls) {
-
-//         if (table[y].intercepted == 1) {
-
-//             spin_unlock(&my_table_lock);
-
-//             my_syscall(REQUEST_SYSCALL_RELEASE, y, y);
-
-//             spin_lock(&my_table_lock);
-
-//         }
-
-//         y++;
-
-//     }
-
-    
-
-//     spin_unlock(&my_table_lock);
-
-    
-
-//     //Syscall table
-
-    
-
-//     spin_lock(&sys_call_table_lock);
-
-    
-
-//     set_addr_rw((unsigned long) sys_call_table); //Allow the syscall table to become readable and writable.
-
-    
-
-//     sys_call_table[MY_CUSTOM_SYSCALL] = orig_custom_syscall;
-
-//     sys_call_table[__NR_exit_group] = orig_exit_group;
-
-    
-
-//     set_addr_ro((unsigned long) sys_call_table); //Set the syscall table to read-only.
-
-    
-
-//     spin_unlock(&sys_call_table_lock);
-
-
-
-// }
 
 static void exit_function(void) {        
 	int sys_call_position = 0;
