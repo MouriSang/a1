@@ -535,22 +535,15 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			return -EPERM;
 		}
 	}
-
-    
-
-    //Immediately test whether the caller has right permissions when issuing REQUEST_START_MONITORING & REQUEST_STOP_MONITORING commands.
-
-    if ((cmd == REQUEST_START_MONITORING) || (cmd == REQUEST_STOP_MONITORING)) {
-
-        if ((current_uid() != 0) && ((pid == 0) || (check_pids_same_owner(current->pid, pid) != 0))) {
-
-            return -EPERM;
-
-        }
-
-    }
-
-    
+	// Check if the monitoring cmd has the right permission
+	if ((cmd == REQUEST_START_MONITORING) || (cmd == REQUEST_STOP_MONITORING)) {
+		if ((pid == 0) || (check_pids_same_owner(current->pid, pid) != 0)){
+			return -EPERM;
+		}
+		if ((current_uid() != 0) && (check_pids_same_owner(current->pid, pid) != 0)) {
+			return -EPERM;
+		}
+	}
 
     //*************************************************************************
 
