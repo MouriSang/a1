@@ -1138,68 +1138,84 @@ static int init_function(void) {
 
 
 
-static void exit_function(void)
-{
-    int y = 0; //Variable decleration at the beginning prevents compiler warning.
+// static void exit_function(void)
+// {
+//     int y = 0; //Variable decleration at the beginning prevents compiler warning.
 
     
 
-    //My Table
+//     //My Table
 
     
 
-    spin_lock(&my_table_lock);
+//     spin_lock(&my_table_lock);
 
     
 
-    while (y < NR_syscalls) {
+//     while (y < NR_syscalls) {
 
-        if (table[y].intercepted == 1) {
+//         if (table[y].intercepted == 1) {
 
-            spin_unlock(&my_table_lock);
+//             spin_unlock(&my_table_lock);
 
-            my_syscall(REQUEST_SYSCALL_RELEASE, y, y);
+//             my_syscall(REQUEST_SYSCALL_RELEASE, y, y);
 
-            spin_lock(&my_table_lock);
+//             spin_lock(&my_table_lock);
 
-        }
+//         }
 
-        y++;
+//         y++;
 
-    }
-
-    
-
-    spin_unlock(&my_table_lock);
+//     }
 
     
 
-    //Syscall table
+//     spin_unlock(&my_table_lock);
 
     
 
-    spin_lock(&sys_call_table_lock);
+//     //Syscall table
 
     
 
-    set_addr_rw((unsigned long) sys_call_table); //Allow the syscall table to become readable and writable.
+//     spin_lock(&sys_call_table_lock);
 
     
 
-    sys_call_table[MY_CUSTOM_SYSCALL] = orig_custom_syscall;
-
-    sys_call_table[__NR_exit_group] = orig_exit_group;
+//     set_addr_rw((unsigned long) sys_call_table); //Allow the syscall table to become readable and writable.
 
     
 
-    set_addr_ro((unsigned long) sys_call_table); //Set the syscall table to read-only.
+//     sys_call_table[MY_CUSTOM_SYSCALL] = orig_custom_syscall;
+
+//     sys_call_table[__NR_exit_group] = orig_exit_group;
 
     
 
-    spin_unlock(&sys_call_table_lock);
+//     set_addr_ro((unsigned long) sys_call_table); //Set the syscall table to read-only.
+
+    
+
+//     spin_unlock(&sys_call_table_lock);
 
 
 
+// }
+
+static void exit_function(void) {        
+	int sys_call_position = 0;
+	spin_lock(&sys_call_table_lock);
+	spin_lock(&my_table_lock);
+	set_addr_rw((unsigned long)sys_call_table);
+	sys_call_table[MY_CUSTOM_SYSCALL] = orig_custom_syscall;
+	sys_call_table[__NR_exit_group] = orig_exit_group;
+	set_addr_ro((unsigned long)sys_call_table);
+	while (sys_call_position < NR_syscalls) {
+		destroy_list(sys_call_position);
+		sys_call_position++;
+	}
+	spin_unlock(&sys_call_table_lock);
+	spin_unlock(&my_table_lock);
 }
 
 
