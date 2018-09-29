@@ -527,7 +527,9 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
             return -EINVAL;
         }
     }
-	
+ 
+
+    
 	// Error checking B. Check the caller has the right permissions (-EPERM)
 	// Check if the intercept and release cmd has the right permission
 	if ((cmd == REQUEST_SYSCALL_INTERCEPT) || (cmd == REQUEST_SYSCALL_RELEASE)) {
@@ -537,13 +539,15 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 	}
 	// Check if the monitoring cmd has the right permission
 	if ((cmd == REQUEST_START_MONITORING) || (cmd == REQUEST_STOP_MONITORING)) {
-		if (check_pids_same_owner(current->pid, pid) != 0) {
+		if ((check_pids_same_owner(current->pid, pid) != 0) || (pid == 0)){
 			return -EPERM;
 		}
-		if ((current_uid() != 0) && (pid == 0)) {
+		if (current_uid() != 0) {
 			return -EPERM;
 		}
 	}
+
+    
 
     //*************************************************************************
 
