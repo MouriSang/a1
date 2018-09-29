@@ -536,119 +536,51 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 		}
 	}
 	// Check if the monitoring cmd has the right permission
-	if ((cmd == REQUEST_START_MONITORING) || (cmd == REQUEST_STOP_MONITORING)) {
+	if ((current_uid() != 0) && ((cmd == REQUEST_START_MONITORING) || (cmd == REQUEST_STOP_MONITORING))) {
 		if ((pid == 0) || (check_pids_same_owner(current->pid, pid) != 0)){
 			return -EPERM;
 		}
-		if ((current_uid() != 0) || (check_pids_same_owner(current->pid, pid) != 0)) {
-			return -EPERM;
+	}
+	// Error checking C. Check for correct context of commands (-EINVAL)
+	// can not release or start monitoring a sys call if not intercepted
+	spin_lock(&my_table_lock);
+	if ((cmd == REQUEST_SYSCALL_RELEASE) || (cmd == REQUEST_START_MONITORING)){
+		if (table[syscall].intercepted == 0){
+			spin_unlock(&my_table_lock);
+			return -EINVAL;
+		}
+	}
+	// can not stop monitoroing if not monitored
+	if (cmd == REQUEST_STOP_MONITORING){
+		if (check_pid_monitored(syscall, pid) == 0){
+			spin_unlock(&my_table_lock);
+			return -EINVAL;
 		}
 	}
 
-    //*************************************************************************
-
-    //Synchronization begins because we are now accessing syscall tables (data structures).
-
-    
-
-    spin_lock(&my_table_lock);
-
-    
-
-    //*************************************************************************
-
-    //Error Conditions: Parts C, D & E from the handout on course website.
-
-    //Part C: Check for correct context of commands. -EINVAL
-
-    //Part D: Check for -EBUSY conditions.
-
-    //Part E: If a pid cannot be added to a monitored list, due to no memory being available, an -ENOMEM error code should be returned.
-
-    
-
-    //Check whether or not the syscall has been intercepted.
-
-    if (table[syscall].intercepted != 0) {
-
-        
-
-        if (cmd == REQUEST_SYSCALL_INTERCEPT){
-
-            //Test whether we are intercepting a syscall that has already been intercepted.
-
-            spin_unlock(&my_table_lock);
-
-            return -EBUSY;
-
-        }
-
-    } else if ((cmd == REQUEST_SYSCALL_RELEASE) || (cmd == REQUEST_STOP_MONITORING) ||
-
-               (cmd == REQUEST_START_MONITORING)) { //Test whether the other commands are being used before the syscall has been intercepted.
-
-        spin_unlock(&my_table_lock);
-
-        return -EINVAL;
-
-        
-
-    }
-
-    
-
-    //***************************************************************************
-
-    //***************************************************************************
-
-    
-
-    if (cmd == REQUEST_STOP_MONITORING) {
-
-        
-
-        //Test whether REQUEST_STOP_MONITORING is being called when no pids are being monitored.
-
-        if ((pid == 0) && (table[syscall].monitored == 0)) {
-
-            spin_unlock(&my_table_lock);
-
-            return -EINVAL;
-
-        }
-
-        //Test whether REQUEST_STOP_MONITORING is being called on a pid that is not being monitored.
-
-        if ((check_pid_monitored(syscall, pid) == 0) && (table[syscall].monitored != 2)) {
-
-            spin_unlock(&my_table_lock);
-
-            return -EINVAL;
-
-        }
-
-        //Bonus error condition.
-
-        if ((check_pid_monitored(syscall, pid) == 1) && (table[syscall].monitored == 2)) {
-
-            spin_unlock(&my_table_lock);
-
-            return -EINVAL;
-
-        }
-
-        
-
-    }
-
-    
-
-    //*****************************************************************************
-
-    //*****************************************************************************
-
-    
-
+	// Error checking D. Check for -EBUSY conditions
+	// can not intercept a sys call that is already intercepted
+	if (cmd == REQUEST_SYSCALL_INTERCEPT){
+		if (table[syscall].intercepted == 1){
+			spin_unlock(&my_table_lock);
+			return -EBUSY;
+		}
+	}
+	// can not monitor a pid that is already monitored
+	if (cmd == REQUEST_START_MONITORING){
+		if (pid == 0) { // all pid
+			if (table[syscall].monitored ==2) {
+				spin_unlock(&my_table_lock);
+				return -EBUSY;
+			}
+		}
+		else if (pid > 0) { // one pid
+			if ((check_pid_monitored(syscall, pid) == 1) || table[syscall].monitored == 2) {
+			spin_unlock(&my_table_lock);
+				return -EBUSY;
+			}
+		}
+	}
     //Check whether REQUEST_START_MONITORING is being called unnecessarily, when all pids are being monitored.
 
     if (cmd == REQUEST_START_MONITORING) {
