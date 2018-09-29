@@ -506,20 +506,14 @@ void (*orig_exit_group)(int);
 
  */
 
-void my_exit_group(int status)
+// void my_exit_group(int status){
+//     del_pid(current->pid);
+//     (*orig_exit_group)(status); 
+// }
 
-{
-
-    
-
-    del_pid(current->pid);
-
-    
-
-    (*orig_exit_group)(status); //Not forgetting the original exit_group call.
-
-    
-
+void my_exit_group(int status){
+	del_pid(current->pid); // delete the pid from all list
+	(*orig_exit_group)(status); // calling the orighinal exit_group call
 }
 
 //----------------------------------------------------------------
@@ -564,16 +558,27 @@ void my_exit_group(int status)
 
  */
 
-asmlinkage long interceptor(struct pt_regs reg) {
-    //Using synchronization, as we're now accessing data structures.
-    spin_lock(&my_table_lock);
-    if ((table[reg.ax].monitored == 2) || (check_pid_monitored(reg.ax, current->pid) == 1)) {
-        log_message(current->pid, reg.ax, reg.bx, reg.cx, reg.dx, reg.si, reg.di, reg.bp);
-    }
-    spin_unlock(&my_table_lock);
-	return table[reg.ax].f(reg);
-}
+// asmlinkage long interceptor(struct pt_regs reg) {
+//     //Using synchronization, as we're now accessing data structures.
+//     spin_lock(&my_table_lock);
+//     if ((table[reg.ax].monitored == 2) || (check_pid_monitored(reg.ax, current->pid) == 1)) {
+//         log_message(current->pid, reg.ax, reg.bx, reg.cx, reg.dx, reg.si, reg.di, reg.bp);
+//     }
+//     spin_unlock(&my_table_lock);
+// 	return table[reg.ax].f(reg);
+// }
 
+asmlinkage long interceptor(struct pt_regs reg) {
+	spin_lock(&my_table_lock); // lock before access the table
+	if (table[reg.ax].monitored == 2){ // all pids are monitored
+		log_message(current->pid, reg.ax, reg.bx, reg.cx, reg.dx, reg.si, reg.di, reg.bp);
+	}
+	else if (check_pid_monitored(reg.ax, current->pid)){ // some pids are monitored, check if the pid is monitored
+		log_message(current->pid, reg.ax, reg.bx, reg.cx, reg.dx, reg.si, reg.di, reg.bp);
+	}
+	spin_unlock(&my_table_lock); // unlock after access the table
+	return table[reg.ax].f(reg); // the original sys call
+}
 
 asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 
