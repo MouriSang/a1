@@ -527,41 +527,23 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
             return -EINVAL;
         }
     }
-    //*************************************************************************
-
-    //Error Conditions: Part B from the handout on course website.
-
-    //Check for the right permissions: -EPERM
-
-    
-
-    //Immediately test whether the caller has right permissions when issuing REQUEST_SYSCALL_INTERCEPT & REQUEST_SYSCALL_RELEASE commands.
-
-    if ((cmd == REQUEST_SYSCALL_INTERCEPT) || (cmd == REQUEST_SYSCALL_RELEASE)) {
-
-        if (current_uid() != 0) {
-
-            return -EPERM;
-
-        }
-
-    }
-
-    
-
-    //Immediately test whether the caller has right permissions when issuing REQUEST_START_MONITORING & REQUEST_STOP_MONITORING commands.
-
-    if ((cmd == REQUEST_START_MONITORING) || (cmd == REQUEST_STOP_MONITORING)) {
-
-        if ((current_uid() != 0) && ((pid == 0) || (check_pids_same_owner(current->pid, pid) != 0))) {
-
-            return -EPERM;
-
-        }
-
-    }
-
-    
+	
+	// Error checking B. Check the caller has the right permissions (-EPERM)
+	// Check if the intercept and release cmd has the right permission
+	if ((cmd == REQUEST_SYSCALL_INTERCEPT) || (cmd == REQUEST_SYSCALL_RELEASE)) {
+		if (current_uid() != 0) {
+			return -EPERM;
+		}
+	}
+	// Check if the monitoring cmd has the right permission
+	if ((cmd == REQUEST_START_MONITORING) || (cmd == REQUEST_STOP_MONITORING)) {
+		if (check_pids_same_owner(current->pid, pid) != 0) {
+			return -EPERM;
+		}
+		if ((current_uid() != 0) && (pid == 0)) {
+			return -EPERM;
+		}
+	}
 
     //*************************************************************************
 
