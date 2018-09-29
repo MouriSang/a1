@@ -1114,77 +1114,33 @@ long (*orig_custom_syscall)(void);
 
 
 
+static int init_function(void) {
+	int sys_call_position = 0;
+	spin_lock(&sys_call_table_lock);
+	orig_custom_syscall = sys_call_table[MY_CUSTOM_SYSCALL];
+	orig_exit_group = sys_call_table[__NR_exit_group];
+	set_addr_rw((unsigned long) sys_call_table);
+	sys_call_table[MY_CUSTOM_SYSCALL] = my_syscall;
+	sys_call_table[__NR_exit_group] = my_exit_group;
+	set_addr_ro((unsigned long) sys_call_table);
+	spin_unlock(&sys_call_table_lock);
+	spin_lock(&my_table_lock);
+	while (sys_call_position < NR_syscalls) {
+		table[sys_call_position].monitored = 0;
+		table[sys_call_position].intercepted = 0;
+		table[sys_call_position].listcount = 0;
+		INIT_LIST_HEAD(&(table[sys_call_position].my_list));
+		sys_call_position++;
+	}
+	spin_unlock(&my_table_lock);
+	return 0;
+}
 
 
-/**
 
- * Module initialization. 
-
- *
-
- * TODO: Make sure to:  
-
- * - Hijack MY_CUSTOM_SYSCALL and save the original in orig_custom_syscall.
-
- * - Hijack the exit_group system call (__NR_exit_group) and save the original 
-
- *   in orig_exit_group.
-
- * - Make sure to set the system call table to writable when making changes, 
-
- *   then set it back to read only once done.
-
- * - Perform any necessary initializations for bookkeeping data structures.
-
- *   To initialize a list, use 
-
- *        INIT_LIST_HEAD (&some_list);
-
- *   where some_list is a "struct list_head". 
-
- * - Ensure synchronization as needed.
-
- */
-
-static int init_function(void)
-
+static void exit_function(void)
 {
-
-    
-
-    int x = 0; //Variable decleration at the beginning prevents compiler warning.
-
-    
-
-    //Syscall table
-
-    
-
-    spin_lock(&sys_call_table_lock);
-
-    
-
-    orig_custom_syscall = sys_call_table[MY_CUSTOM_SYSCALL];
-
-    orig_exit_group = sys_call_table[__NR_exit_group];
-
-    
-
-    set_addr_rw((unsigned long) sys_call_table); //Allow the syscall table to become readable and writable.
-
-    
-
-    sys_call_table[MY_CUSTOM_SYSCALL] = my_syscall;
-
-    sys_call_table[__NR_exit_group] = my_exit_group;
-
-    
-
-    set_addr_ro((unsigned long) sys_call_table); //Set the syscall table to read-only.
-
-    
-
-    spin_unlock(&sys_call_table_lock);
+    int y = 0; //Variable decleration at the beginning prevents compiler warning.
 
     
 
@@ -1196,17 +1152,19 @@ static int init_function(void)
 
     
 
-    while (x < NR_syscalls) {
+    while (y < NR_syscalls) {
 
-        table[x].intercepted = 0;
+        if (table[y].intercepted == 1) {
 
-        table[x].monitored = 0;
+            spin_unlock(&my_table_lock);
 
-        table[x].listcount = 0;
+            my_syscall(REQUEST_SYSCALL_RELEASE, y, y);
 
-        INIT_LIST_HEAD(&(table[x].my_list));
+            spin_lock(&my_table_lock);
 
-        x++;
+        }
+
+        y++;
 
     }
 
@@ -1214,29 +1172,34 @@ static int init_function(void)
 
     spin_unlock(&my_table_lock);
 
+    
 
-
-	return 0;
+    //Syscall table
 
     
 
-}
+    spin_lock(&sys_call_table_lock);
+
+    
+
+    set_addr_rw((unsigned long) sys_call_table); //Allow the syscall table to become readable and writable.
+
+    
+
+    sys_call_table[MY_CUSTOM_SYSCALL] = orig_custom_syscall;
+
+    sys_call_table[__NR_exit_group] = orig_exit_group;
+
+    
+
+    set_addr_ro((unsigned long) sys_call_table); //Set the syscall table to read-only.
+
+    
+
+    spin_unlock(&sys_call_table_lock);
 
 
 
-static void exit_function(void) {        
-	int sys_call_position = 0;
-	spin_lock(&sys_call_table_lock);
-	set_addr_rw((unsigned long)sys_call_table);
-	sys_call_table[MY_CUSTOM_SYSCALL] = orig_custom_syscall;
-	sys_call_table[__NR_exit_group] = orig_exit_group;
-	set_addr_ro((unsigned long)sys_call_table);
-	spin_unlock(&sys_call_table_lock);
-	spin_lock(&my_table_lock);
-	while (sys_call_position < NR_syscalls) {
-		destroy_list(sys_call_position);
-	}
-	spin_unlock(&my_table_lock);
 }
 
 
