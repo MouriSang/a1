@@ -606,46 +606,18 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 	spin_unlock(&sys_call_table_lock);
             break;
 
-            
-
         case REQUEST_START_MONITORING:
-
-            
-
             if (pid == 0) {
-
                 destroy_list(syscall);
-
                 table[syscall].monitored = 2;
-
             } else if (table[syscall].monitored != 2) {
-
                 if (add_pid_sysc(pid, syscall) != 0) {
-
                     spin_unlock(&my_table_lock);
-
-                    return -ENOMEM; //Error Conditions from Handout: Part E
-
+                    return -ENOMEM; 
                 }
-
                 table[syscall].monitored = 1;
-
-            } else {
-
-                if (del_pid_sysc(pid, syscall) != 0) {
-
-                    spin_unlock(&my_table_lock);
-
-                    return -EINVAL;
-
-                }
-
-            }
-
+            } 
             spin_unlock(&my_table_lock);
-
-            
-
             break;
 
             
