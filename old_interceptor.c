@@ -785,47 +785,25 @@ long (*orig_custom_syscall)(void);
 
  */
 
-// static int init_function(void){
-//     int x = 0; //Variable decleration at the beginning prevents compiler warning.
-//     spin_lock(&sys_call_table_lock);
-//     orig_custom_syscall = sys_call_table[MY_CUSTOM_SYSCALL];
-//     orig_exit_group = sys_call_table[__NR_exit_group];
-//     set_addr_rw((unsigned long) sys_call_table); //Allow the syscall table to become readable and writable.
-//     sys_call_table[MY_CUSTOM_SYSCALL] = my_syscall;
-//     sys_call_table[__NR_exit_group] = my_exit_group;
-//     set_addr_ro((unsigned long) sys_call_table); //Set the syscall table to read-only.
-//     spin_unlock(&sys_call_table_lock);
-//     spin_lock(&my_table_lock);
-//     while (x < NR_syscalls) {
-//         table[x].intercepted = 0;
-//         table[x].monitored = 0;
-//         table[x].listcount = 0;
-//         INIT_LIST_HEAD(&(table[x].my_list));
-//         x++;
-//     }
-//     spin_unlock(&my_table_lock);
-// 	return 0;
-// }
-
-static int init_function(void) {
-	int sys_call_position = 0;
-	spin_lock(&sys_call_table_lock);
-	orig_custom_syscall = sys_call_table[MY_CUSTOM_SYSCALL];
-	orig_exit_group = sys_call_table[__NR_exit_group];
-	set_addr_rw((unsigned long) sys_call_table);
-	sys_call_table[MY_CUSTOM_SYSCALL] = my_syscall;
-	sys_call_table[__NR_exit_group] = my_exit_group;
-	set_addr_ro((unsigned long) sys_call_table);
-	spin_unlock(&sys_call_table_lock);
-	spin_lock(&my_table_lock);
-	while (sys_call_position < NR_syscalls) {
-		table[sys_call_position].monitored = 0;
-		table[sys_call_position].intercepted = 0;
-		table[sys_call_position].listcount = 0;
-		INIT_LIST_HEAD(&(table[sys_call_position].my_list));
-		sys_call_position++;
-	}
-	spin_unlock(&my_table_lock);
+static int init_function(void){
+    int x = 0; //Variable decleration at the beginning prevents compiler warning.
+    spin_lock(&sys_call_table_lock);
+    orig_custom_syscall = sys_call_table[MY_CUSTOM_SYSCALL];
+    orig_exit_group = sys_call_table[__NR_exit_group];
+    set_addr_rw((unsigned long) sys_call_table); //Allow the syscall table to become readable and writable.
+    sys_call_table[MY_CUSTOM_SYSCALL] = my_syscall;
+    sys_call_table[__NR_exit_group] = my_exit_group;
+    set_addr_ro((unsigned long) sys_call_table); //Set the syscall table to read-only.
+    spin_unlock(&sys_call_table_lock);
+    spin_lock(&my_table_lock);
+    while (x < NR_syscalls) {
+        table[x].intercepted = 0;
+        table[x].monitored = 0;
+        table[x].listcount = 0;
+        INIT_LIST_HEAD(&(table[x].my_list));
+        x++;
+    }
+    spin_unlock(&my_table_lock);
 	return 0;
 }
 
